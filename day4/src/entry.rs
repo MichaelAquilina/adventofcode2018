@@ -3,8 +3,11 @@ use std::cmp::Ordering;
 use std::error::Error;
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct Guard(i32);
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum Event {
-    BeginsShift(String),
+    BeginsShift(Guard),
     FallsAsleep,
     WakesUp,
 }
@@ -44,8 +47,7 @@ impl std::fmt::Display for EntryError {
     }
 }
 
-impl Error for EntryError {
-}
+impl Error for EntryError {}
 
 impl std::cmp::Ord for Entry {
     fn cmp(&self, other: &Entry) -> Ordering {
@@ -55,17 +57,15 @@ impl std::cmp::Ord for Entry {
 
 impl PartialOrd for Entry {
     fn partial_cmp(&self, other: &Entry) -> Option<Ordering> {
-       Some(self.cmp(other))
+        Some(self.cmp(other))
     }
 }
 
 impl PartialEq for Entry {
     fn eq(&self, other: &Entry) -> bool {
-        self.timestamp == other.timestamp &&
-            self.event == other.event
+        self.timestamp == other.timestamp && self.event == other.event
     }
 }
-
 
 impl std::str::FromStr for Entry {
     type Err = EntryError;
@@ -86,8 +86,24 @@ impl std::str::FromStr for Entry {
         } else if message == "falls asleep" {
             Event::FallsAsleep
         } else if message.ends_with("begins shift") {
-            let guard = message.replace(" begins shift", "");
-            Event::BeginsShift(guard)
+            let message = message.replace(" begins shift", "");
+            let mut tokens = message.split("#");
+            tokens.next();
+            let guard = tokens.next().ok_or(EntryError::InvalidEvent(String::from(
+                "Invalid shift message",
+            )))?;
+
+            let guard: i32 = match guard.parse() {
+                Err(_) => {
+                    return Err(EntryError::InvalidEvent(format!(
+                        "Invalid Guard number: {}",
+                        guard
+                    )));
+                }
+                Ok(v) => v,
+            };
+
+            Event::BeginsShift(Guard(guard))
         } else {
             return Err(EntryError::InvalidEvent(String::from(message)));
         };
@@ -145,7 +161,7 @@ mod test_entry {
                 NaiveDate::from_ymd(1518, 11, 3),
                 NaiveTime::from_hms(0, 5, 0),
             ),
-            event: Event::BeginsShift(String::from("Guard #10")),
+            event: Event::BeginsShift(Guard(10)),
         };
 
         assert_eq!(result, expected);
