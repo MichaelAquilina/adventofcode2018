@@ -1,10 +1,10 @@
 #[derive(PartialEq, Debug)]
 pub struct Rect {
-    id: String,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    pub id: String,
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
 }
 
 #[derive(PartialEq, Debug)]
