@@ -5,7 +5,7 @@ use std::io::{self, Read};
 mod entry;
 
 use chrono::{NaiveTime, Timelike};
-use entry::{Entry, Event, Guard};
+use entry::{Entry, Event, Guard, EntryError};
 
 fn find_sleepiest_guard(entries: &[Entry]) -> Option<(Guard, Vec<(i64, NaiveTime)>)> {
     let mut current_guard: Option<&Guard> = None;
@@ -71,14 +71,16 @@ fn find_highest_freq_minute(entries: &[(i64, NaiveTime)]) -> Option<i64> {
     max_minute
 }
 
-fn find_best_guard_and_minute(entries: &mut [Entry]) -> Option<(Guard, i64)> {
-    entries.sort_unstable();
-
+fn strategy_1(entries: &[Entry]) -> Option<(Guard, i64)> {
     if let Some((guard, entries)) = find_sleepiest_guard(&entries) {
         if let Some(minute) = find_highest_freq_minute(&entries) {
             return Some((guard, minute));
         }
     }
+    None
+}
+
+fn strategy_2(entries: &[Entry]) -> Option<(Guard, i64)> {
     None
 }
 
@@ -94,11 +96,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         entries.push(entry);
     }
 
-    if let Some((guard, minute)) = find_best_guard_and_minute(&mut entries) {
-        println!("{:?} {}", guard, minute);
+    entries.sort_unstable();
+
+    if let Some((guard, minute)) = strategy_1(&entries) {
         println!("{}", guard.0 as i64 * minute);
     } else {
-        println!("Unable to find sleepiest guard");
+        println!("Unable to find result for strategy 1");
+    }
+
+    if let Some((guard, minute)) = strategy_2(&entries) {
+        println!("{}", guard.0 as i64 * minute);
+    } else {
+        println!("Unable to find result for strategy 2");
     }
 
     Ok(())
@@ -144,13 +153,12 @@ mod test_find_highest_freq_minute {
 }
 
 #[cfg(test)]
-mod test_find_best_guard_and_minute {
+mod test_strategies {
     use super::*;
 
-    #[test]
-    fn test_provided_example() -> Result<(), Box<dyn Error>> {
+    fn get_example() -> Result<Vec<Entry>, EntryError> {
         // NOTE: these entries are already sorted
-        let mut entries: Vec<Entry> = vec![
+        Ok(vec![
             "[1518-11-01 00:00] Guard #10 begins shift".parse()?,
             "[1518-11-01 00:05] falls asleep".parse()?,
             "[1518-11-01 00:25] wakes up".parse()?,
@@ -168,13 +176,31 @@ mod test_find_best_guard_and_minute {
             "[1518-11-05 00:03] Guard #99 begins shift".parse()?,
             "[1518-11-05 00:45] falls asleep".parse()?,
             "[1518-11-05 00:55] wakes up".parse()?,
-        ];
+        ])
+    }
 
-        let result = find_best_guard_and_minute(&mut entries);
+    #[test]
+    fn test_strategy_1() -> Result<(), Box<dyn Error>> {
+        let entries = get_example()?;
+
+        let result = strategy_1(&entries);
         let expected = Some((Guard(10), 24));
 
         assert_eq!(result, expected);
 
         Ok(())
     }
+
+    #[test]
+    fn test_strategy_2() -> Result<(), Box<dyn Error>> {
+        let entries = get_example()?;
+
+        let result = strategy_2(&entries);
+        let expected = Some((Guard(99), 45));
+
+        assert_eq!(result, expected);
+
+        Ok(())
+    }
+
 }
