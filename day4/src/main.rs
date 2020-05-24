@@ -5,7 +5,7 @@ use std::io::{self, Read};
 mod entry;
 
 use chrono::{NaiveTime, Timelike};
-use entry::{Entry, Event, Guard, EntryError};
+use entry::{Entry, Event, Guard};
 
 fn find_sleepiest_guard(entries: &[Entry]) -> Option<(Guard, Vec<(i64, NaiveTime)>)> {
     let mut current_guard: Option<&Guard> = None;
@@ -81,7 +81,37 @@ fn strategy_1(entries: &[Entry]) -> Option<(Guard, i64)> {
 }
 
 fn strategy_2(entries: &[Entry]) -> Option<(Guard, i64)> {
-    None
+    let mut minute_freq: HashMap<(Guard, i64), i32> = HashMap::new();
+    let mut current_guard = None;
+    let mut asleep_at = None;
+    let mut max_freq = 0;
+    let mut max_entry = None;
+
+    for entry in entries {
+        if let Event::BeginsShift(guard) = entry.event {
+            current_guard = Some(guard);
+            asleep_at = None;
+        } else if Event::FallsAsleep == entry.event {
+            asleep_at = Some(entry.timestamp);
+        } else if Event::WakesUp == entry.event {
+            let duration = entry.timestamp - asleep_at.unwrap();
+            for n in 0..duration.num_minutes() {
+                let key = asleep_at.unwrap().minute() as i64 + n;
+
+                let freq = minute_freq
+                    .entry((current_guard.unwrap(), key))
+                    .or_insert(0);
+                *freq += 1;
+
+                if *freq > max_freq {
+                    max_freq = *freq;
+                    max_entry = Some((current_guard.unwrap(), key));
+                }
+            }
+        }
+    }
+
+    max_entry
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -99,13 +129,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     entries.sort_unstable();
 
     if let Some((guard, minute)) = strategy_1(&entries) {
-        println!("{}", guard.0 as i64 * minute);
+        println!("Strategy 1: {}", guard.0 as i64 * minute);
     } else {
         println!("Unable to find result for strategy 1");
     }
 
     if let Some((guard, minute)) = strategy_2(&entries) {
-        println!("{}", guard.0 as i64 * minute);
+        println!("Strategy 2: {}", guard.0 as i64 * minute);
     } else {
         println!("Unable to find result for strategy 2");
     }
@@ -155,6 +185,7 @@ mod test_find_highest_freq_minute {
 #[cfg(test)]
 mod test_strategies {
     use super::*;
+    use entry::EntryError;
 
     fn get_example() -> Result<Vec<Entry>, EntryError> {
         // NOTE: these entries are already sorted
@@ -202,5 +233,4 @@ mod test_strategies {
 
         Ok(())
     }
-
 }
