@@ -1,4 +1,3 @@
-use std::cmp::min;
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::{self, Read};
@@ -23,8 +22,7 @@ fn find_sleepiest_guard(entries: &[Entry]) -> Option<(Guard, Vec<(i64, NaiveTime
             let duration = guards.entry(current_guard.unwrap()).or_insert(vec![]);
 
             let target_time = asleep_at.unwrap();
-            // If the guard wakes up past 1am, only count the minutes up to 1am
-            let end_time = min(entry.timestamp.time(), NaiveTime::from_hms(1, 0, 0));
+            let end_time = entry.timestamp.time();
             let delta = end_time - asleep_at.unwrap();
 
             // Store number of minutes + starting time
@@ -60,7 +58,7 @@ fn find_highest_freq_minute(entries: &[(i64, NaiveTime)]) -> Option<i64> {
     for (minutes, start_time) in entries {
         for n in 0..*minutes {
             let key = n + start_time.minute() as i64;
-            let freq = minute_freq.entry(n).or_insert(0);
+            let freq = minute_freq.entry(key).or_insert(0);
             *freq += 1;
 
             if *freq > max_freq {
@@ -107,7 +105,46 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 #[cfg(test)]
-mod test_find_sleepiest_guard {
+mod test_find_highest_freq_minute {
+    use super::*;
+
+    #[test]
+    fn test_empty() {
+        let result = find_highest_freq_minute(&mut []);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_correct_output() {
+        assert_eq!(NaiveTime::from_hms(0, 5, 0).minute(), 5);
+
+        let entries = vec![
+            (10, NaiveTime::from_hms(0, 5, 0)),
+            (5, NaiveTime::from_hms(0, 0, 0)),
+            (4, NaiveTime::from_hms(0, 6, 0)),
+        ];
+
+        let result = find_highest_freq_minute(&entries);
+
+        assert_eq!(result, Some(6));
+    }
+
+    #[test]
+    fn test_take_first_in_ties() {
+        let entries = vec![
+            (10, NaiveTime::from_hms(0, 0, 0)),
+            (5, NaiveTime::from_hms(0, 10, 0)),
+            (4, NaiveTime::from_hms(0, 15, 0)),
+        ];
+
+        let result = find_highest_freq_minute(&entries);
+
+        assert_eq!(result, Some(0));
+    }
+}
+
+#[cfg(test)]
+mod test_find_best_guard_and_minute {
     use super::*;
 
     #[test]
