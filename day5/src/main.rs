@@ -1,14 +1,35 @@
 use std::error::Error;
 use std::io::Read;
 
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut contents = String::new();
+    std::io::stdin().read_to_string(&mut contents)?;
+
+    let contents = contents.trim_end();
+
+    let result = parse_polymer(&contents, None);
+    println!("no improvement: {}", result.chars().count());
+
+    let result = improve_polymer(&contents);
+    println!("with improvements: {:?}", result.chars().count());
+
+    Ok(())
+}
+
 fn reacts(unit1: char, unit2: char) -> bool {
     unit1 != unit2 && unit1.to_ascii_uppercase() == unit2.to_ascii_uppercase()
 }
 
-fn parse_polymer(polymer: &str) -> String {
+fn parse_polymer(polymer: &str, ignore: Option<char>) -> String {
     let mut result: Vec<char> = vec![];
 
     for unit in polymer.chars() {
+        if let Some(ignore) = ignore {
+            if ignore.to_ascii_uppercase() == unit.to_ascii_uppercase() {
+                continue;
+            }
+        }
+
         if let Some(prev_unit) = result.last() {
             if reacts(*prev_unit, unit) {
                 result.pop();
@@ -23,16 +44,18 @@ fn parse_polymer(polymer: &str) -> String {
     result.iter().collect()
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut contents = String::new();
-    std::io::stdin().read_to_string(&mut contents)?;
+fn improve_polymer(polymer: &str) -> String {
+    let mut polymers = vec![];
+    // There does not seem to a built-in for rust :(
+    for unit in "abcdefghijklmnopqrstuvwxyz".chars() {
+        let result = parse_polymer(&polymer, Some(unit));
+        polymers.push(result);
+    }
 
-    let contents = contents.trim_end();
-
-    let result = parse_polymer(&contents);
-    println!("{}", result.chars().count());
-
-    Ok(())
+    polymers
+        .into_iter()
+        .min_by_key(|p| p.chars().count())
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -73,9 +96,40 @@ mod test_parse_polymer {
         case("aabAAB", "aabAAB"),
         case("dabAcCaCBAcCcaDA", "dabCBAcaDA")
     )]
-    fn test_examples(polymer: &str, output: &str) {
-        let result = parse_polymer(polymer);
+    fn test_examples_no_ignore(polymer: &str, output: &str) {
+        let result = parse_polymer(polymer, None);
 
         assert_eq!(result, output);
+    }
+
+    #[rstest(
+        polymer,
+        ignore,
+        output,
+        case("dabAcCaCBAcCcaDA", 'a', "dbCBcD"),
+        case("dabAcCaCBAcCcaDA", 'b', "daCAcaDA"),
+        case("dabAcCaCBAcCcaDA", 'c', "daDA"),
+        case("dabAcCaCBAcCcaDA", 'd', "abCBAc")
+    )]
+    fn test_examples_ignore(polymer: &str, ignore: char, output: &str) {
+        let result = parse_polymer(polymer, Some(ignore));
+
+        assert_eq!(result, output);
+    }
+}
+
+#[cfg(test)]
+mod test_improve_polymer {
+    use super::*;
+
+    #[test]
+    fn test_empty() {
+        assert_eq!(improve_polymer(""), "");
+    }
+
+    #[test]
+    fn test_example() {
+        let result = improve_polymer("dabAcCaCBAcCcaDA");
+        assert_eq!(result, "daDA");
     }
 }
