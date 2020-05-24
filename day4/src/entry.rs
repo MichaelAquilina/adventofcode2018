@@ -2,8 +2,8 @@ use chrono::NaiveDateTime;
 use std::cmp::Ordering;
 use std::error::Error;
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct Guard(i32);
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+pub struct Guard(pub i32);
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Event {
