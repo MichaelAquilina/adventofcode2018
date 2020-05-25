@@ -28,6 +28,7 @@ jobs:
           command: >
             for day in day*; do
               cd "$day"
+              echo "Testing $day"
               cargo test
               cd ..
             done
