@@ -1,0 +1,40 @@
+version: 2
+
+jobs:
+  rustfmt:
+    docker:
+      - image: "circleci/rust:1.43"
+    steps:
+      - checkout
+      - run:
+          name: install rustfmt
+          command: rustup component add rustfmt
+      - run:
+          name: run rustfmt
+          command: >
+            for day in day*; do
+              cd "$day"
+              cargo fmt -- --check
+              cd ..
+            done
+
+  test:
+    docker:
+      - image: "circleci/rust:1.43"
+    steps:
+      - checkout
+      - run:
+          name: run tests
+          command: >
+            for day in day*; do
+              cd "$day"
+              cargo test
+              cd ..
+            done
+
+workflows:
+  version: 2
+  test_solutions:
+    jobs:
+      - rustfmt
+      - test
