@@ -72,6 +72,30 @@ fn get_largest_area(coord_map: &CoordMap, bottom_right: &Coord) -> Option<i32> {
         .max()
 }
 
+fn solution1(coordinates: &[Coord], bottom_right: &Coord) -> Option<i32> {
+    let coord_map = get_map(&coordinates, &bottom_right);
+    get_largest_area(&coord_map, &bottom_right)
+}
+
+fn solution2(coordinates: &[Coord], bottom_right: &Coord, max_distance: i32) -> i32 {
+    let mut area = 0;
+    for x in 0..=bottom_right.x {
+        for y in 0..=bottom_right.y {
+            let point = Coord { x, y };
+            let mut total_distance = 0;
+            for coord in coordinates {
+                total_distance += coord.distance_from(&point);
+            }
+
+            if total_distance < max_distance {
+                area += 1;
+            }
+        }
+    }
+
+    area
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let mut contents = String::new();
     std::io::stdin().read_to_string(&mut contents)?;
@@ -83,29 +107,58 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let bottom_right = get_bottom_right(&coordinates);
 
-    let coord_map = get_map(&coordinates, &bottom_right);
-    let largest_area = get_largest_area(&coord_map, &bottom_right);
+    let result = solution1(&coordinates, &bottom_right);
+    println!("{:?}", result);
 
-    println!("{:?}", largest_area);
+    let result = solution2(&coordinates, &bottom_right, 10000);
+    println!("{:?}", result);
 
     Ok(())
 }
 
 #[cfg(test)]
-mod test_get_map {
+mod test {
     use super::*;
     use coord::CoordError;
 
-    #[test]
-    fn test_provided_example() -> Result<(), CoordError> {
-        let coordinates = vec![
+    fn get_example() -> Result<Vec<Coord>, CoordError> {
+        Ok(vec![
             "1, 1".parse()?,
             "1, 6".parse()?,
             "8, 3".parse()?,
             "3, 4".parse()?,
             "5, 5".parse()?,
             "8, 9".parse()?,
-        ];
+        ])
+    }
+
+    #[test]
+    fn test_solution1() -> Result<(), CoordError> {
+        let coordinates = get_example()?;
+
+        // Hard coded from the provided example
+        let bottom_right = Coord { x: 9, y: 9 };
+        let result = solution1(&coordinates, &bottom_right);
+
+        assert_eq!(result, Some(17));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_solution2() -> Result<(), CoordError> {
+        let coordinates = get_example()?;
+
+        let bottom_right = Coord { x: 9, y: 9 };
+        let result = solution2(&coordinates, &bottom_right, 32);
+
+        assert_eq!(result, 16);
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_map() -> Result<(), CoordError> {
+        let coordinates = get_example()?;
 
         // Hard coded from the provided example
         let bottom_right = Coord { x: 9, y: 9 };
@@ -130,9 +183,6 @@ mod test_get_map {
         assert_eq!(map[&"1,4".parse()?], None);
         assert_eq!(map[&"9,6".parse()?], None);
         assert_eq!(map[&"8,6".parse()?], None);
-
-        let area = get_largest_area(&map, &bottom_right);
-        assert_eq!(area, Some(17));
 
         Ok(())
     }
