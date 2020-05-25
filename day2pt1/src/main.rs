@@ -4,8 +4,8 @@
 extern crate clap;
 
 use std::collections::HashMap;
-use std::fs::File;
 use std::error::Error;
+use std::fs::File;
 use std::io::prelude::*;
 
 fn check_box_id(box_id: &str) -> (bool, bool) {
@@ -22,7 +22,7 @@ fn check_box_id(box_id: &str) -> (bool, bool) {
         match value {
             2 => twice = true,
             3 => thrice = true,
-            _ => {},
+            _ => {}
         }
     }
 
@@ -32,7 +32,8 @@ fn check_box_id(box_id: &str) -> (bool, bool) {
 fn main() -> Result<(), Box<dyn Error>> {
     let matches = clap_app!(day2 =>
         (@arg input: +required)
-    ).get_matches();
+    )
+    .get_matches();
 
     let input = matches.value_of("input").ok_or("input missing")?;
 
