@@ -53,6 +53,7 @@ fn generate_node(tokens: &mut SplitWhitespace, current_id: &mut i32) -> Result<N
 }
 
 impl Node {
+    // solution for pt1
     pub fn metadata_sum(&self) -> i32 {
         let mut accumulator = 0;
 
@@ -62,6 +63,25 @@ impl Node {
 
         for node in &self.children {
             accumulator += node.metadata_sum();
+        }
+
+        accumulator
+    }
+
+    // Solution for pt2
+    pub fn value(&self) -> i32 {
+        let mut accumulator = 0;
+
+        if self.children.is_empty() {
+            accumulator += self.metadata.iter().sum::<i32>();
+        } else {
+            for &value in &self.metadata {
+                let index = value as usize - 1;
+                match self.children.get(index) {
+                    Some(child) => accumulator += child.value(),
+                    None => continue,
+                }
+            }
         }
 
         accumulator
@@ -123,6 +143,7 @@ mod test_node {
         assert_eq!(result, expected);
 
         assert_eq!(result.metadata_sum(), 138);
+        assert_eq!(result.value(), 66);
 
         Ok(())
     }

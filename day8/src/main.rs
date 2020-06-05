@@ -13,7 +13,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let result: Node = contents.parse()?;
 
-    println!("{}", result.metadata_sum());
+    println!("Solution 1: {}", result.metadata_sum());
+    println!("Solution 2: {}", result.value());
 
     Ok(())
 }
