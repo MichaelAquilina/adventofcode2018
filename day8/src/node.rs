@@ -4,7 +4,7 @@ use std::str::{FromStr, SplitWhitespace};
 #[derive(Debug, PartialEq)]
 pub struct Node {
     pub id: i32,
-    pub children: Vec<Box<Node>>,
+    pub children: Vec<Node>,
     pub metadata: Vec<i32>,
 }
 
@@ -34,7 +34,7 @@ fn generate_node(tokens: &mut SplitWhitespace, current_id: &mut i32) -> Result<N
 
     for _ in 0..num_children {
         *current_id += 1;
-        children.push(Box::new(generate_node(tokens, current_id)?));
+        children.push(generate_node(tokens, current_id)?);
     }
 
     for _ in 0..num_metadata {
@@ -123,20 +123,20 @@ mod test_node {
             id: 0,
             metadata: vec![1, 1, 2],
             children: vec![
-                Box::new(Node {
+                Node {
                     id: 1,
                     metadata: vec![10, 11, 12],
                     children: vec![],
-                }),
-                Box::new(Node {
+                },
+                Node {
                     id: 2,
                     metadata: vec![2],
-                    children: vec![Box::new(Node {
+                    children: vec![Node {
                         id: 3,
                         metadata: vec![99],
                         children: vec![],
-                    })],
-                }),
+                    }],
+                },
             ],
         };
 
