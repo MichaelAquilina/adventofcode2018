@@ -73,7 +73,7 @@ fn find_correct_state(lights: &mut [Light]) -> u32 {
     steps
 }
 
-fn render(lights: &mut [Light]) -> String {
+fn render(lights: &[Light]) -> String {
     let bounding_box = get_bounding_box(lights);
 
     let width = bounding_box.width() + 1;
@@ -93,4 +93,66 @@ fn render(lights: &mut [Light]) -> String {
         .map(|row| row.iter().collect::<String>())
         .collect::<Vec<String>>()
         .join("\n")
+}
+
+#[cfg(test)]
+mod test_render {
+    use super::*;
+    use light::LightErr;
+
+    #[test]
+    fn test_provided_example() -> Result<(), LightErr> {
+        let mut lights: [Light; 31] = [
+            "position=< 9,  1> velocity=< 0,  2>".parse()?,
+            "position=< 7,  0> velocity=<-1,  0>".parse()?,
+            "position=< 3, -2> velocity=<-1,  1>".parse()?,
+            "position=< 6, 10> velocity=<-2, -1>".parse()?,
+            "position=< 2, -4> velocity=< 2,  2>".parse()?,
+            "position=<-6, 10> velocity=< 2, -2>".parse()?,
+            "position=< 1,  8> velocity=< 1, -1>".parse()?,
+            "position=< 1,  7> velocity=< 1,  0>".parse()?,
+            "position=<-3, 11> velocity=< 1, -2>".parse()?,
+            "position=< 7,  6> velocity=<-1, -1>".parse()?,
+            "position=<-2,  3> velocity=< 1,  0>".parse()?,
+            "position=<-4,  3> velocity=< 2,  0>".parse()?,
+            "position=<10, -3> velocity=<-1,  1>".parse()?,
+            "position=< 5, 11> velocity=< 1, -2>".parse()?,
+            "position=< 4,  7> velocity=< 0, -1>".parse()?,
+            "position=< 8, -2> velocity=< 0,  1>".parse()?,
+            "position=<15,  0> velocity=<-2,  0>".parse()?,
+            "position=< 1,  6> velocity=< 1,  0>".parse()?,
+            "position=< 8,  9> velocity=< 0, -1>".parse()?,
+            "position=< 3,  3> velocity=<-1,  1>".parse()?,
+            "position=< 0,  5> velocity=< 0, -1>".parse()?,
+            "position=<-2,  2> velocity=< 2,  0>".parse()?,
+            "position=< 5, -2> velocity=< 1,  2>".parse()?,
+            "position=< 1,  4> velocity=< 2,  1>".parse()?,
+            "position=<-2,  7> velocity=< 2, -2>".parse()?,
+            "position=< 3,  6> velocity=<-1, -1>".parse()?,
+            "position=< 5,  0> velocity=< 1,  0>".parse()?,
+            "position=<-6,  0> velocity=< 2,  0>".parse()?,
+            "position=< 5,  9> velocity=< 1, -2>".parse()?,
+            "position=<14,  7> velocity=<-2,  0>".parse()?,
+            "position=<-3,  6> velocity=< 2, -1>".parse()?,
+        ];
+
+        find_correct_state(&mut lights);
+        let output = render(&lights);
+
+        let expected = [
+            "#...#..###",
+            "#...#...#.",
+            "#...#...#.",
+            "#####...#.",
+            "#...#...#.",
+            "#...#...#.",
+            "#...#...#.",
+            "#...#..###",
+        ]
+        .join("\n");
+
+        assert_eq!(output, expected);
+
+        Ok(())
+    }
 }
