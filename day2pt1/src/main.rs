@@ -1,12 +1,28 @@
 // https://adventofcode.com/2018/day/2
 
-#[macro_use]
-extern crate clap;
-
 use std::collections::HashMap;
 use std::error::Error;
-use std::fs::File;
-use std::io::prelude::*;
+use std::io::Read;
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut contents = String::new();
+
+    std::io::stdin().read_to_string(&mut contents)?;
+
+    let mut twice = 0;
+    let mut thrice = 0;
+    for line in contents.split_whitespace() {
+        let result = check_box_id(line);
+        twice += result.0 as i32;
+        thrice += result.1 as i32;
+    }
+
+    let result = twice * thrice;
+
+    println!("{}", result);
+
+    Ok(())
+}
 
 fn check_box_id(box_id: &str) -> (bool, bool) {
     let mut letters = HashMap::new();
@@ -27,34 +43,6 @@ fn check_box_id(box_id: &str) -> (bool, bool) {
     }
 
     (twice, thrice)
-}
-
-fn main() -> Result<(), Box<dyn Error>> {
-    let matches = clap_app!(day2 =>
-        (@arg input: +required)
-    )
-    .get_matches();
-
-    let input = matches.value_of("input").ok_or("input missing")?;
-
-    let mut file = File::open(input)?;
-    let mut contents = String::new();
-
-    file.read_to_string(&mut contents)?;
-
-    let mut twice = 0;
-    let mut thrice = 0;
-    for line in contents.split_whitespace() {
-        let result = check_box_id(line);
-        twice += result.0 as i32;
-        thrice += result.1 as i32;
-    }
-
-    let result = twice * thrice;
-
-    println!("{}", result);
-
-    Ok(())
 }
 
 #[cfg(test)]
