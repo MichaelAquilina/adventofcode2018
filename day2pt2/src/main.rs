@@ -1,12 +1,21 @@
 // https://adventofcode.com/2018/day/2
 
-#[macro_use]
-extern crate clap;
-
 use std::error::Error;
-use std::fs::File;
-use std::io::prelude::*;
+use std::io::Read;
 
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut contents = String::new();
+
+    std::io::stdin().read_to_string(&mut contents)?;
+
+    let boxes = contents.split_whitespace().collect::<Vec<&str>>();
+
+    let result = find_similar_box_id(&boxes);
+
+    println!("{:?}", result);
+
+    Ok(())
+}
 fn compare_box_ids(box1: &str, box2: &str) -> String {
     let mut result = vec![];
 
@@ -31,28 +40,6 @@ fn find_similar_box_id(boxes: &[&str]) -> Option<String> {
         }
     }
     None
-}
-
-fn main() -> Result<(), Box<dyn Error>> {
-    let matches = clap_app!(day2 =>
-        (@arg input: +required)
-    )
-    .get_matches();
-
-    let input = matches.value_of("input").ok_or("input missing")?;
-
-    let mut file = File::open(input)?;
-    let mut contents = String::new();
-
-    file.read_to_string(&mut contents)?;
-
-    let boxes = contents.split_whitespace().collect::<Vec<&str>>();
-
-    let result = find_similar_box_id(&boxes);
-
-    println!("{:?}", result);
-
-    Ok(())
 }
 
 #[cfg(test)]
