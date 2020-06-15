@@ -17,10 +17,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         lights.push(line.parse()?);
     }
 
-    find_correct_state(&mut lights);
+    let steps = find_correct_state(&mut lights);
     let output = render(&mut lights);
 
     println!("{}", output);
+    println!("Message displayed in {} steps", steps);
 
     Ok(())
 }
@@ -48,12 +49,14 @@ fn step_backward(lights: &mut [Light]) {
     }
 }
 
-fn find_correct_state(lights: &mut [Light]) {
+fn find_correct_state(lights: &mut [Light]) -> u32 {
     let mut min_bounding_box = i64::MAX;
     let mut bounding_box;
+    let mut steps = 0;
 
     loop {
         step_forward(lights);
+
         bounding_box = get_bounding_box(lights);
         if bounding_box.area() < min_bounding_box {
             min_bounding_box = bounding_box.area();
@@ -63,7 +66,11 @@ fn find_correct_state(lights: &mut [Light]) {
             step_backward(lights);
             break;
         }
+
+        steps += 1;
     }
+
+    steps
 }
 
 fn render(lights: &mut [Light]) -> String {
