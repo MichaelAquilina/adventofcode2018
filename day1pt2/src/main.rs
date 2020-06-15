@@ -1,10 +1,18 @@
-#[macro_use]
-extern crate clap;
-
 use std::collections::HashSet;
 use std::error::Error;
-use std::fs::File;
-use std::io::prelude::*;
+use std::io::Read;
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut contents = String::new();
+
+    std::io::stdin().read_to_string(&mut contents)?;
+
+    let result = find_repeat_frequency(&contents)?;
+
+    println!("{}", result);
+
+    Ok(())
+}
 
 fn find_repeat_frequency(contents: &str) -> Result<i32, Box<dyn Error>> {
     let mut visited = HashSet::new();
@@ -24,29 +32,6 @@ fn find_repeat_frequency(contents: &str) -> Result<i32, Box<dyn Error>> {
         }
     }
 }
-
-fn main() -> Result<(), Box<dyn Error>> {
-    let matches = clap_app!(day1 =>
-        (@arg input: +required)
-    )
-    .get_matches();
-
-    let input = matches.value_of("input").ok_or("input missing")?;
-
-    let mut file = File::open(input)?;
-    let mut contents = String::new();
-
-    file.read_to_string(&mut contents)?;
-
-    let contents = contents;
-
-    let result = find_repeat_frequency(&contents)?;
-
-    println!("{}", result);
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod test_find_repeat_frequency {
     use super::*;
