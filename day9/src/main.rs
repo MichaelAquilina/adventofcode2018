@@ -4,31 +4,37 @@ mod config;
 
 use config::Config;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::error::Error;
 use std::io::Read;
-
-// the % operator in rust is the reminder function NOT
-// the modulo operator like it is in other languages like Python
-fn modulo(v1: i32, v2: i32) -> i32 {
-    (v1 % v2 + v2) % v2
-}
 
 #[derive(Debug)]
 struct Game {
     config: Config,
-    board: Vec<u32>,
+    board: VecDeque<u32>,
     scores: HashMap<u32, u32>,
     current_index: usize,
     current_player: u32,
     current_marble: u32,
 }
 
+fn cycle_clockwise<T>(board: &mut VecDeque<T>) {
+    let old_marble = board.pop_front().unwrap();
+    board.push_back(old_marble);
+}
+
+fn cycle_anticlockwise<T>(board: &mut VecDeque<T>) {
+    let old_marble = board.pop_back().unwrap();
+    board.push_front(old_marble);
+}
+
 impl Game {
     fn new(config: Config) -> Game {
+        let mut board: VecDeque<u32> = VecDeque::with_capacity(config.max_points as usize);
+        board.push_back(0);
         Game {
             config,
-            board: vec![0],
+            board,
             scores: HashMap::new(),
             current_index: 0,
             current_player: 0,
@@ -40,25 +46,27 @@ impl Game {
         self.scores.values().copied().max()
     }
 
-    /// Play the next turn in the game
+    /// play a round of the game.
+    /// The Current marble of the board is always in the front
+    /// rotating clockwise is just a matter of traversing from the current marble
     fn play(&mut self) {
         self.current_marble += 1;
         let marble = self.current_marble;
 
-        if marble % self.config.bonus_point == 0 {
-            self.current_index = modulo(
-                self.current_index as i32 + self.config.bonus_rotation,
-                self.board.len() as i32,
-            ) as usize;
-
-            let value = self.board.remove(self.current_index as usize);
+        if marble % 23 == 0 {
+            // move the current index of the board backwards
+            for _ in 0..7 {
+                cycle_anticlockwise(&mut self.board);
+            }
+            let value = self.board.pop_front().unwrap();
 
             let score = self.scores.entry(self.current_player).or_insert(0);
             *score += marble + value;
         } else {
-            self.current_index =
-                1 + modulo(self.current_index as i32 + 1, self.board.len() as i32) as usize;
-            self.board.insert(self.current_index as usize, marble);
+            // move the current index of the board two spaces
+            cycle_clockwise(&mut self.board);
+            cycle_clockwise(&mut self.board);
+            self.board.push_front(marble);
         }
         self.current_player = (self.current_player + 1) % self.config.players;
     }
@@ -86,23 +94,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     game.play_all();
     println!("{:?}", game.highest_score());
 
+    let mut config: Config = contents.parse()?;
+    config.max_points *= 100;
+
+    let mut game = Game::new(config);
+    game.play_all();
+    println!("{:?}", game.highest_score());
+
     Ok(())
-}
-
-#[cfg(test)]
-mod test_modulo {
-    use super::*;
-    use rstest::*;
-
-    #[rstest(v1, v2, result,
-        case(1, 7, 1),
-        case(-1, 4, 3),
-        case(9, 3, 0),
-        case(10, 8, 2),
-    )]
-    fn test_correct_output(v1: i32, v2: i32, result: i32) {
-        assert_eq!(modulo(v1, v2), result);
-    }
 }
 
 #[cfg(test)]
@@ -113,55 +112,40 @@ mod test_game {
     #[test]
     fn test_play() {
         let config = Config {
-            players: 2,
-            max_points: 5,
-            bonus_point: 3,
-            bonus_rotation: -2,
+            players: 9,
+            max_points: 25,
         };
 
         let mut game = Game::new(config);
 
         game.play();
-        let expected_board = vec![0, 1];
-        assert_eq!(game.board, expected_board);
+        assert_eq!(game.board, VecDeque::from(vec![1, 0]));
 
         game.play();
-        let expected_board = vec![0, 2, 1];
-        assert_eq!(game.board, expected_board);
+        assert_eq!(game.board, VecDeque::from(vec![2, 1, 0]));
 
         game.play();
-        let expected_board = vec![0, 2];
-        assert_eq!(game.board, expected_board);
-        assert_eq!(game.highest_score(), Some(4));
+        assert_eq!(game.board, VecDeque::from(vec![3, 0, 2, 1]));
 
         game.play();
-        let expected_board = vec![0, 2, 4];
-        assert_eq!(game.board, expected_board);
-
-        game.play();
-        let expected_board = vec![0, 5, 2, 4];
-        assert_eq!(game.board, expected_board);
-
-        assert!(game.completed())
+        assert_eq!(game.board, VecDeque::from(vec![4, 2, 1, 3, 0]));
     }
 
     #[test]
-    fn test_board_state() {
-        let config = Config {
-            players: 9,
-            max_points: 25,
-            bonus_point: 23,
-            bonus_rotation: -7,
-        };
+    fn test_cycle() {
+        let mut board = VecDeque::from(vec![5, 6, 7, 8]);
 
-        let mut game = Game::new(config);
-        game.play_all();
+        cycle_clockwise(&mut board);
 
-        let expected_board = vec![
-            0, 16, 8, 17, 4, 18, 19, 2, 24, 20, 25, 10, 21, 5, 22, 11, 1, 12, 6, 13, 3, 14, 7, 15,
-        ];
+        let expected = VecDeque::from(vec![6, 7, 8, 5]);
 
-        assert_eq!(game.board, expected_board);
+        assert_eq!(board, expected);
+
+        cycle_anticlockwise(&mut board);
+
+        let expected = VecDeque::from(vec![5, 6, 7, 8]);
+
+        assert_eq!(board, expected);
     }
 
     #[rstest(
@@ -184,8 +168,6 @@ mod test_game {
         let config = Config {
             players,
             max_points,
-            bonus_point: 23,
-            bonus_rotation: -7,
         };
 
         let mut game = Game::new(config);

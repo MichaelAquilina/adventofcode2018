@@ -5,8 +5,6 @@ use std::num::ParseIntError;
 pub struct Config {
     pub players: u32,
     pub max_points: u32,
-    pub bonus_point: u32,    // marble value that causes the player to take it
-    pub bonus_rotation: i32, // rotation amount that happens at bonus
 }
 
 #[derive(Debug)]
@@ -56,8 +54,6 @@ impl std::str::FromStr for Config {
         Ok(Config {
             players,
             max_points,
-            bonus_point: 23,
-            bonus_rotation: -7,
         })
     }
 }
@@ -73,8 +69,6 @@ mod test_config {
         let expected = Config {
             players: 429,
             max_points: 70901,
-            bonus_point: 23,
-            bonus_rotation: -7,
         };
 
         assert_eq!(config, expected);
