@@ -92,39 +92,32 @@ fn window(state: &VecDeque<char>, index: usize) -> String {
 }
 
 fn pad(state: &mut VecDeque<char>, start_index: i32) -> i32 {
-    let first = state[0];
-    let second = state[1];
-    let third = state[2];
     let mut start_index = start_index;
 
-    if first == '#' {
+    if state[0] == '#' {
         state.push_front('.');
         state.push_front('.');
         state.push_front('.');
         start_index -= 3;
-    } else if second == '#' {
+    } else if state[1] == '#' {
         state.push_front('.');
         state.push_front('.');
         start_index -= 2;
-    } else if third == '#' {
+    } else if state[2] == '#' {
         state.push_front('.');
         start_index -= 1;
     }
 
     let size = state.len();
 
-    let first = state[size - 1];
-    let second = state[size - 2];
-    let third = state[size - 3];
-
-    if first == '#' {
+    if state[size - 1] == '#' {
         state.push_back('.');
         state.push_back('.');
         state.push_back('.');
-    } else if second == '#' {
+    } else if state[size - 2] == '#' {
         state.push_back('.');
         state.push_back('.');
-    } else if third == '#' {
+    } else if state[size - 3] == '#' {
         state.push_back('.');
     }
 
