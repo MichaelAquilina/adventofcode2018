@@ -1,132 +1,8 @@
-use std::cmp::Ordering;
 use std::collections::HashMap;
 
+use crate::cart::{turn, Cart, Direction, Position};
+use crate::track::Track;
 use thiserror::Error;
-
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub enum Direction {
-    North,
-    South,
-    East,
-    West,
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct Position {
-    pub x: usize,
-    pub y: usize,
-}
-
-impl PartialOrd for Position {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match self.y.partial_cmp(&other.y) {
-            Some(Ordering::Equal) => self.x.partial_cmp(&other.x),
-            ordering => ordering,
-        }
-    }
-}
-
-impl Ord for Position {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match self.y.cmp(&other.y) {
-            Ordering::Equal => self.x.cmp(&other.x),
-            ordering => ordering,
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Track {
-    Intersection,
-    Horizontal,
-    Vertical,
-    DiagonalLeft,
-    DiagonalRight,
-    Empty,
-}
-
-impl Track {
-    pub fn to_char(&self) -> char {
-        match self {
-            Track::Intersection => '+',
-            Track::Horizontal => '-',
-            Track::Vertical => '|',
-            Track::DiagonalRight => '/',
-            Track::DiagonalLeft => '\\',
-            Track::Empty => ' ',
-        }
-    }
-}
-
-fn turn(cart: &Cart, track: Track) -> (Direction, u32) {
-    let mut turn_count = cart.turn_count;
-    let direction = match (cart.direction, track) {
-        (Direction::North, Track::DiagonalRight) => turn_right(cart.direction),
-        (Direction::North, Track::DiagonalLeft) => turn_left(cart.direction),
-        (Direction::South, Track::DiagonalRight) => turn_right(cart.direction),
-        (Direction::South, Track::DiagonalLeft) => turn_left(cart.direction),
-        (Direction::West, Track::DiagonalLeft) => turn_right(cart.direction),
-        (Direction::West, Track::DiagonalRight) => turn_left(cart.direction),
-        (Direction::East, Track::DiagonalLeft) => turn_right(cart.direction),
-        (Direction::East, Track::DiagonalRight) => turn_left(cart.direction),
-        (direction, Track::Intersection) => {
-            turn_count += 1;
-            match cart.turn_count % 3 {
-                0 => turn_left(direction),
-                1 => direction,
-                2 => turn_right(direction),
-                _ => panic!("Unreachable"),
-            }
-        }
-        _ => cart.direction,
-    };
-
-    (direction, turn_count)
-}
-
-fn turn_right(direction: Direction) -> Direction {
-    match direction {
-        Direction::North => Direction::East,
-        Direction::East => Direction::South,
-        Direction::South => Direction::West,
-        Direction::West => Direction::North,
-    }
-}
-
-fn turn_left(direction: Direction) -> Direction {
-    match direction {
-        Direction::North => Direction::West,
-        Direction::West => Direction::South,
-        Direction::South => Direction::East,
-        Direction::East => Direction::North,
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Cart {
-    position: Position,
-    direction: Direction,
-    turn_count: u32,
-}
-
-impl Cart {
-    pub fn new(x: usize, y: usize, direction: Direction) -> Cart {
-        Cart {
-            position: Position { x, y },
-            direction,
-            turn_count: 0,
-        }
-    }
-
-    pub fn to_char(&self) -> char {
-        match &self.direction {
-            Direction::North => '^',
-            Direction::South => 'v',
-            Direction::West => '<',
-            Direction::East => '>',
-        }
-    }
-}
 
 #[derive(Error, Debug)]
 pub enum MapError {
@@ -328,247 +204,139 @@ impl std::str::FromStr for Map {
 }
 
 #[cfg(test)]
-mod test_position {
-    use super::*;
-
-    #[test]
-    fn test_ordering() {
-        let mut positions = vec![
-            Position { y: 1, x: 2 },
-            Position { y: 4, x: 1 },
-            Position { y: 0, x: 3 },
-            Position { y: 1, x: 5 },
-        ];
-
-        positions.sort();
-
-        let expected = vec![
-            Position { y: 0, x: 3 },
-            Position { y: 1, x: 2 },
-            Position { y: 1, x: 5 },
-            Position { y: 4, x: 1 },
-        ];
-
-        assert_eq!(positions, expected);
-    }
-
-    #[test]
-    fn test_sorting_carts() {
-        let mut carts = vec![
-            Cart::new(2, 1, Direction::North),
-            Cart::new(1, 4, Direction::North),
-            Cart::new(3, 0, Direction::North),
-            Cart::new(5, 1, Direction::North),
-        ];
-
-        carts.sort_by_cached_key(|c| c.position.clone());
-
-        let expected = vec![
-            Cart::new(3, 0, Direction::North),
-            Cart::new(2, 1, Direction::North),
-            Cart::new(5, 1, Direction::North),
-            Cart::new(1, 4, Direction::North),
-        ];
-
-        assert_eq!(carts, expected);
-    }
-}
-
-#[cfg(test)]
-mod test_run {
-    use super::*;
-
-    /// Check for cart position equality
-    fn assert_cart_positions_eq(m1: &Map, m2: &Map) {
-        assert_eq!(m1.carts.len(), m2.carts.len());
-        for (c1, c2) in m1.carts.iter().zip(m2.carts.iter()) {
-            assert_eq!(c1.position, c2.position);
-            assert_eq!(c1.direction, c2.direction);
-        }
-    }
-
-    // TODO: Fix this infinite loop
-    // extra example found on Reddit
-    // https://www.reddit.com/r/adventofcode/comments/a8f32j/2018_day_13_help_needed/#t1_ecdqxrx
-    #[test]
-    fn test_extra_example() -> Result<(), MapError> {
-        #[rustfmt::skip]
-        let mut map: Map = [
-            r"/-\  ",
-            r"\>+-\",
-            r"  \</",
-        ]
-        .join("\n")
-        .parse()?;
-
-        let position = map.run_until_collission(true, 10)?;
-
-        assert_eq!(position, Position { x: 0, y: 1 });
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_provided_example_1() -> Result<(), MapError> {
-        let mut map: Map = [
-            r"/->-\        ",
-            r"|   |  /----\",
-            r"| /-+--+-\  |",
-            r"| | |  | v  |",
-            r"\-+-/  \-+--/",
-            r"  \------/   ",
-        ]
-        .join("\n")
-        .parse()?;
-
-        map.run()?;
-        let expected: Map = [
-            r"/-->\        ",
-            r"|   |  /----\",
-            r"| /-+--+-\  |",
-            r"| | |  | |  |",
-            r"\-+-/  \->--/",
-            r"  \------/   ",
-        ]
-        .join("\n")
-        .parse()?;
-        assert_cart_positions_eq(&map, &expected);
-
-        map.run()?;
-        let expected: Map = [
-            r"/---v        ",
-            r"|   |  /----\",
-            r"| /-+--+-\  |",
-            r"| | |  | |  |",
-            r"\-+-/  \-+>-/",
-            r"  \------/   ",
-        ]
-        .join("\n")
-        .parse()?;
-        assert_cart_positions_eq(&map, &expected);
-
-        map.run()?;
-        let expected: Map = [
-            r"/---\        ",
-            r"|   v  /----\",
-            r"| /-+--+-\  |",
-            r"| | |  | |  |",
-            r"\-+-/  \-+->/",
-            r"  \------/   ",
-        ]
-        .join("\n")
-        .parse()?;
-        assert_cart_positions_eq(&map, &expected);
-
-        map.run()?;
-        let expected: Map = [
-            r"/---\        ",
-            r"|   |  /----\",
-            r"| /->--+-\  |",
-            r"| | |  | |  |",
-            r"\-+-/  \-+--^",
-            r"  \------/   ",
-        ]
-        .join("\n")
-        .parse()?;
-        assert_cart_positions_eq(&map, &expected);
-
-        map.run()?;
-        let expected: Map = [
-            r"/---\        ",
-            r"|   |  /----\",
-            r"| /-+>-+-\  |",
-            r"| | |  | |  ^",
-            r"\-+-/  \-+--/",
-            r"  \------/   ",
-        ]
-        .join("\n")
-        .parse()?;
-        assert_cart_positions_eq(&map, &expected);
-
-        let position = map.run_until_collission(false, 10)?;
-
-        assert_eq!(position, Position { x: 7, y: 3 });
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_provided_example_2() -> Result<(), MapError> {
-        let mut map: Map = [
-            r"/>-<\  ", r"|   |  ", r"| /<+-\", r"| | | v", r"\>+</ |", r"  |   ^", r"  \<->/",
-        ]
-        .join("\n")
-        .parse()?;
-
-        let position = map.run_until_last_cart(true, 10)?;
-
-        assert_eq!(position, Position { x: 6, y: 4 });
-
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod test_check_collissions {
-    use super::*;
-
-    #[test]
-    fn test_empty() {
-        let map = Map {
-            carts: vec![],
-            tracks: vec![],
-        };
-
-        assert_eq!(map.check_collisions(&[]), None);
-    }
-
-    #[test]
-    fn test_no_collissions() {
-        let map = Map {
-            tracks: vec![],
-            carts: vec![
-                Cart::new(0, 0, Direction::North),
-                Cart::new(1, 0, Direction::North),
-                Cart::new(1, 1, Direction::South),
-            ],
-        };
-
-        assert_eq!(map.check_collisions(&[]), None);
-    }
-
-    #[test]
-    fn test_crash() {
-        let map = Map {
-            tracks: vec![],
-            carts: vec![
-                Cart::new(0, 0, Direction::North),
-                Cart::new(1, 1, Direction::North),
-                Cart::new(1, 1, Direction::South),
-            ],
-        };
-
-        let expected = (2, 1);
-        assert_eq!(map.check_collisions(&[]), Some(expected));
-    }
-}
-
-#[cfg(test)]
 mod test_map {
     use super::*;
 
-    mod test_print {
+    mod test_run {
+        use super::*;
+
+        /// Check for cart position equality
+        fn assert_cart_positions_eq(m1: &Map, m2: &Map) {
+            assert_eq!(m1.carts.len(), m2.carts.len());
+            for (c1, c2) in m1.carts.iter().zip(m2.carts.iter()) {
+                assert_eq!(c1.position, c2.position);
+                assert_eq!(c1.direction, c2.direction);
+            }
+        }
+
+        // TODO: Fix this infinite loop
+        // extra example found on Reddit
+        // https://www.reddit.com/r/adventofcode/comments/a8f32j/2018_day_13_help_needed/#t1_ecdqxrx
+        #[test]
+        fn test_extra_example() -> Result<(), MapError> {
+            #[rustfmt::skip]
+            let mut map: Map = [
+                r"/-\  ",
+                r"\>+-\",
+                r"  \</",
+            ]
+            .join("\n")
+            .parse()?;
+
+            let position = map.run_until_collission(true, 10)?;
+
+            assert_eq!(position, Position { x: 0, y: 1 });
+
+            Ok(())
+        }
+
+        #[test]
+        fn test_provided_example_1() -> Result<(), MapError> {
+            let mut map: Map = [
+                r"/->-\        ",
+                r"|   |  /----\",
+                r"| /-+--+-\  |",
+                r"| | |  | v  |",
+                r"\-+-/  \-+--/",
+                r"  \------/   ",
+            ]
+            .join("\n")
+            .parse()?;
+
+            map.run()?;
+            let expected: Map = [
+                r"/-->\        ",
+                r"|   |  /----\",
+                r"| /-+--+-\  |",
+                r"| | |  | |  |",
+                r"\-+-/  \->--/",
+                r"  \------/   ",
+            ]
+            .join("\n")
+            .parse()?;
+            assert_cart_positions_eq(&map, &expected);
+
+            map.run()?;
+            let expected: Map = [
+                r"/---v        ",
+                r"|   |  /----\",
+                r"| /-+--+-\  |",
+                r"| | |  | |  |",
+                r"\-+-/  \-+>-/",
+                r"  \------/   ",
+            ]
+            .join("\n")
+            .parse()?;
+            assert_cart_positions_eq(&map, &expected);
+
+            let position = map.run_until_collission(false, 15)?;
+
+            assert_eq!(position, Position { x: 7, y: 3 });
+
+            Ok(())
+        }
+
+        #[test]
+        fn test_provided_example_2() -> Result<(), MapError> {
+            let mut map: Map = [
+                r"/>-<\  ", r"|   |  ", r"| /<+-\", r"| | | v", r"\>+</ |", r"  |   ^", r"  \<->/",
+            ]
+            .join("\n")
+            .parse()?;
+
+            let position = map.run_until_last_cart(true, 10)?;
+
+            assert_eq!(position, Position { x: 6, y: 4 });
+
+            Ok(())
+        }
+    }
+
+    mod test_check_collissions {
         use super::*;
 
         #[test]
-        fn test_empty() {
+        fn test_no_collissions() {
             let map = Map {
-                carts: vec![],
                 tracks: vec![],
+                carts: vec![
+                    Cart::new(0, 0, Direction::North),
+                    Cart::new(1, 0, Direction::North),
+                    Cart::new(1, 1, Direction::South),
+                ],
             };
 
-            assert_eq!(map.print(), String::from(""));
+            assert_eq!(map.check_collisions(&[]), None);
         }
+
+        #[test]
+        fn test_crash() {
+            let map = Map {
+                tracks: vec![],
+                carts: vec![
+                    Cart::new(0, 0, Direction::North),
+                    Cart::new(1, 1, Direction::North),
+                    Cart::new(1, 1, Direction::South),
+                ],
+            };
+
+            let expected = (2, 1);
+            assert_eq!(map.check_collisions(&[]), Some(expected));
+        }
+    }
+
+    mod test_print {
+        use super::*;
 
         #[test]
         fn test_correct_output() -> Result<(), MapError> {
