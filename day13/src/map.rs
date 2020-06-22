@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use thiserror::Error;
 
@@ -102,7 +102,7 @@ fn turn_left(direction: Direction) -> Direction {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Cart {
     position: Position,
     direction: Direction,
@@ -168,21 +168,34 @@ impl Map {
         self.tracks[y][x]
     }
 
-    pub fn check_collisions(&self) -> Option<Position> {
-        let mut positions: HashSet<&Position> = HashSet::new();
-        for cart in &self.carts {
-            if positions.contains(&cart.position) {
-                return Some(cart.position.clone());
+    pub fn check_collisions(&self, dead: &[usize]) -> Option<(usize, usize)> {
+        let mut positions: HashMap<&Position, usize> = HashMap::new();
+        for (index, cart) in self.carts.iter().enumerate() {
+            if dead.contains(&index) {
+                continue;
             }
-            positions.insert(&cart.position);
+
+            if let Some(other) = positions.get(&cart.position) {
+                return Some((index, *other));
+            }
+            positions.insert(&cart.position, index);
         }
         None
     }
 
     /// Runs 1 event loop of the cart simulation. Returns a Position
     /// of the first crash if one does occur, and None otherwise
-    pub fn run(&mut self) -> Result<Option<Position>, MapError> {
+    pub fn run(&mut self) -> Result<Vec<Position>, MapError> {
+        let mut crashes = vec![];
+        let mut dead = vec![];
+
+        // we do not use standard iteration here because we need fine grained
+        // control over mutating the objects inside self.carts
         for index in 0..self.carts.len() {
+            if dead.contains(&index) {
+                continue;
+            }
+
             let cart = &self.carts[index];
             let x = cart.position.x;
             let y = cart.position.y;
@@ -202,11 +215,21 @@ impl Map {
                 turn_count,
             };
 
-            let collision = self.check_collisions();
-            if collision.is_some() {
-                return Ok(collision);
+            let collision = self.check_collisions(&dead);
+            if let Some((c1_index, c2_index)) = collision {
+                dead.push(c1_index);
+                dead.push(c2_index);
+                crashes.push(self.carts[index].position.clone());
             }
         }
+
+        self.carts = self
+            .carts
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| !dead.contains(i))
+            .map(|(_, c)| c.clone())
+            .collect::<Vec<Cart>>();
 
         // Carts all move at the same speed; they take turns moving a single step at a time.
         // They do this based on their current location: carts on the top row move first
@@ -216,7 +239,7 @@ impl Map {
         // each of these loops is called a tick.
         // TODO: There must be a better way to do this without cloning position
         self.carts.sort_by_cached_key(|c| c.position.clone());
-        Ok(None)
+        Ok(crashes)
     }
 
     pub fn run_until_collission(
@@ -229,8 +252,25 @@ impl Map {
                 println!("{}\n", self.print());
             }
 
-            if let Some(position) = self.run()? {
-                return Ok(position);
+            let crashes = self.run()?;
+
+            if !crashes.is_empty() {
+                return Ok(crashes[0].clone());
+            }
+        }
+        Err(MapError::RanPastLimit)
+    }
+
+    pub fn run_until_last_cart(&mut self, print: bool, limit: usize) -> Result<Position, MapError> {
+        for _ in 0..limit {
+            if print {
+                println!("{}\n", self.print());
+            }
+
+            self.run()?;
+
+            if self.carts.len() == 1 {
+                return Ok(self.carts[0].position.clone());
             }
         }
         Err(MapError::RanPastLimit)
@@ -369,7 +409,7 @@ mod test_run {
     }
 
     #[test]
-    fn test_provided_example() -> Result<(), MapError> {
+    fn test_provided_example_1() -> Result<(), MapError> {
         let mut map: Map = [
             r"/->-\        ",
             r"|   |  /----\",
@@ -452,6 +492,21 @@ mod test_run {
 
         Ok(())
     }
+
+    #[test]
+    fn test_provided_example_2() -> Result<(), MapError> {
+        let mut map: Map = [
+            r"/>-<\  ", r"|   |  ", r"| /<+-\", r"| | | v", r"\>+</ |", r"  |   ^", r"  \<->/",
+        ]
+        .join("\n")
+        .parse()?;
+
+        let position = map.run_until_last_cart(true, 10)?;
+
+        assert_eq!(position, Position { x: 6, y: 4 });
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -461,11 +516,11 @@ mod test_check_collissions {
     #[test]
     fn test_empty() {
         let map = Map {
-            tracks: vec![],
             carts: vec![],
+            tracks: vec![],
         };
 
-        assert_eq!(map.check_collisions(), None);
+        assert_eq!(map.check_collisions(&[]), None);
     }
 
     #[test]
@@ -479,7 +534,7 @@ mod test_check_collissions {
             ],
         };
 
-        assert_eq!(map.check_collisions(), None);
+        assert_eq!(map.check_collisions(&[]), None);
     }
 
     #[test]
@@ -493,7 +548,8 @@ mod test_check_collissions {
             ],
         };
 
-        assert_eq!(map.check_collisions(), Some(Position { x: 1, y: 1 }));
+        let expected = (2, 1);
+        assert_eq!(map.check_collisions(&[]), Some(expected));
     }
 }
 

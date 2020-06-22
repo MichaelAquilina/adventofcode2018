@@ -21,5 +21,9 @@ fn main() -> Result<()> {
     let position = map.run_until_collission(false, 400)?;
     println!("{:?}", position);
 
+    println!("Continuing cart simulation");
+    let position = map.run_until_last_cart(false, 100000)?;
+    println!("{:?}", position);
+
     Ok(())
 }
