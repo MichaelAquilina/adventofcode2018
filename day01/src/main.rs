@@ -7,11 +7,25 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     std::io::stdin().read_to_string(&mut contents)?;
 
-    let result = find_repeat_frequency(&contents)?;
+    let result = get_resulting_frequency(&contents)?;
+    println!("{}", result);
 
+    let result = find_repeat_frequency(&contents)?;
     println!("{}", result);
 
     Ok(())
+}
+
+fn get_resulting_frequency(contents: &str) -> Result<i32, Box<dyn Error>> {
+    let mut accumulator = 0;
+
+    for line in contents.split_whitespace() {
+        let value: i32 = line.parse()?;
+
+        accumulator += value;
+    }
+
+    Ok(accumulator)
 }
 
 fn find_repeat_frequency(contents: &str) -> Result<i32, Box<dyn Error>> {
@@ -32,6 +46,25 @@ fn find_repeat_frequency(contents: &str) -> Result<i32, Box<dyn Error>> {
         }
     }
 }
+
+#[cfg(test)]
+mod test_get_resulting_frequency {
+    use super::*;
+    use rstest::*;
+
+    #[rstest(contents, expected,
+        case("+1 +1 +1", 3),
+        case("+1 +1 -2", 0),
+        case("-1 -2 -3", -6),
+    )]
+    fn test_provided_examples(contents: &str, expected: i32) -> Result<(), Box<dyn Error>> {
+        let result = get_resulting_frequency(&contents)?;
+        assert_eq!(result, expected);
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test_find_repeat_frequency {
     use super::*;
