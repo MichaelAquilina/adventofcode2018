@@ -468,6 +468,29 @@ mod test_game {
         #[rustfmt::skip]
         let mut game: Game = [
             "#######",
+            "#E.G#.#",
+            "#.#G..#",
+            "#G.#.G#",
+            "#G..#.#",
+            "#...E.#",
+            "#######",
+        ]
+        .join("\n")
+        .parse()?;
+
+        let rounds = game.play(50);
+        let total_hp = game.total_hp_remaining();
+
+        assert_eq!((rounds, total_hp), (35, 793));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_provided_simulation_5() -> Result<(), GameError> {
+        #[rustfmt::skip]
+        let mut game: Game = [
+            "#######",
             "#.E...#",
             "#.#..G#",
             "#.###.#",
@@ -487,7 +510,7 @@ mod test_game {
     }
 
     #[test]
-    fn test_provided_simulation_5() -> Result<(), GameError> {
+    fn test_provided_simulation_6() -> Result<(), GameError> {
         #[rustfmt::skip]
         let mut game: Game = [
             "#########",
