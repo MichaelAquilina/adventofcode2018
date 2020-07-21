@@ -215,7 +215,8 @@ impl Game {
 
         for (position, unit) in &self.units {
             if unit.race == race {
-                results.extend(self.get_adjacent(&position, true));
+                let adjacent = self.get_adjacent(&position, true);
+                results.extend(adjacent);
             }
         }
 
@@ -284,14 +285,21 @@ impl Game {
 
             let completed = self.next();
 
+            // TODO: I think there is a bug in how we increment index here
+            // I think it should only increment if possibly the entire round
+            // from self.next completed and do not increment otherwise?
+            // Confirmed: You need to determine the outcome of the battle: the
+            // number of full rounds that were completed (not counting the round in which
+            // combat ends)
+            if completed {
+                index += 1;
+            }
             println!("Round: {}", index);
             println!("{}", self.render_map());
 
-            if completed {
+            if self.game_completed() {
                 return index;
             }
-
-            index += 1;
         }
     }
 
@@ -304,7 +312,7 @@ impl Game {
 
         for point in keys {
             if self.game_completed() {
-                return true;
+                return false;
             }
 
             // TODO: below is quite messy, could do with a cleanup
@@ -336,7 +344,7 @@ impl Game {
             }
         }
 
-        false
+        true
     }
 }
 

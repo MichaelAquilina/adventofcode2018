@@ -36,4 +36,22 @@ mod test_point {
     fn test_ordering(point1: Point, point2: Point, expected: Ordering) {
         assert_eq!(point1.cmp(&point2), expected);
     }
+
+    #[test]
+    fn test_sorting() {
+        let mut positions = vec![
+            Point { x: 4, y: 3 },
+            Point { x: 1, y: 3 },
+            Point { x: 5, y: 2 },
+        ];
+
+        positions.sort_unstable();
+
+        let expected = vec![
+            Point { x: 5, y: 2 },
+            Point { x: 1, y: 3 },
+            Point { x: 4, y: 3 },
+        ];
+        assert_eq!(positions, expected);
+    }
 }
